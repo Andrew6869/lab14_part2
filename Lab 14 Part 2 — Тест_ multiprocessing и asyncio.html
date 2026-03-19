@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<!-- saved from url=(0048)file:///C:/Users/245128/Downloads/questions.html -->
+<html lang="ru"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 14 Part 2 — Тест: multiprocessing и asyncio</title>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --border: #e0e4ea;
+    --text: #1e293b;
+    --text-light: #64748b;
+    --accent: #3b82f6;
+    --green: #16a34a;
+    --green-bg: #dcfce7;
+    --green-border: #86efac;
+    --red: #dc2626;
+    --red-bg: #fee2e2;
+    --red-border: #fca5a5;
+    --neutral-bg: #f1f5f9;
+    --neutral-hover: #e2e8f0;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 2rem 1rem;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: .4rem;
+  }
+
+  header p {
+    color: var(--text-light);
+    font-size: .95rem;
+  }
+
+  .score-bar {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    font-size: .95rem;
+    font-weight: 600;
+  }
+
+  .score-bar span { padding: .4rem .8rem; border-radius: .4rem; }
+  #score-correct { background: var(--green-bg); color: var(--green); }
+  #score-wrong   { background: var(--red-bg);   color: var(--red); }
+  #score-total   { background: var(--neutral-bg); color: var(--text-light); }
+
+  .question-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: .75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    transition: box-shadow .2s;
+  }
+
+  .question-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+
+  .q-header {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    margin-bottom: .75rem;
+  }
+
+  .q-number {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: .85rem;
+    white-space: nowrap;
+  }
+
+  .q-text {
+    font-weight: 600;
+    font-size: 1.02rem;
+  }
+
+  .q-code {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: .6rem .9rem;
+    border-radius: .4rem;
+    font-family: "Fira Code", "Consolas", monospace;
+    font-size: .85rem;
+    margin: .6rem 0;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .options { display: flex; flex-direction: column; gap: .5rem; }
+
+  .option {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .65rem .9rem;
+    border: 2px solid var(--border);
+    border-radius: .5rem;
+    cursor: pointer;
+    transition: all .15s;
+    font-size: .95rem;
+    user-select: none;
+  }
+
+  .option:hover:not(.disabled) {
+    background: var(--neutral-hover);
+    border-color: var(--accent);
+  }
+
+  .option .letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: var(--neutral-bg);
+    font-weight: 700;
+    font-size: .8rem;
+    flex-shrink: 0;
+    transition: all .15s;
+  }
+
+  .option.correct {
+    background: var(--green-bg);
+    border-color: var(--green-border);
+  }
+  .option.correct .letter {
+    background: var(--green);
+    color: #fff;
+  }
+
+  .option.wrong {
+    background: var(--red-bg);
+    border-color: var(--red-border);
+  }
+  .option.wrong .letter {
+    background: var(--red);
+    color: #fff;
+  }
+
+  .option.disabled { cursor: default; opacity: .7; }
+  .option.disabled.correct { opacity: 1; }
+
+  .explanation {
+    display: none;
+    margin-top: .6rem;
+    padding: .6rem .9rem;
+    border-left: 3px solid var(--green);
+    background: var(--green-bg);
+    border-radius: 0 .4rem .4rem 0;
+    font-size: .9rem;
+    color: #15803d;
+  }
+
+  .explanation.visible { display: block; }
+
+  .student-form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: .75rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .student-form .fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: .75rem;
+    margin-bottom: 1rem;
+  }
+
+  .student-form label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text-light);
+    display: block;
+    margin-bottom: .25rem;
+  }
+
+  .student-form input {
+    width: 100%;
+    padding: .5rem .7rem;
+    border: 2px solid var(--border);
+    border-radius: .4rem;
+    font-size: .95rem;
+    font-family: inherit;
+    transition: border-color .15s;
+  }
+
+  .student-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .start-btn, .reset-btn {
+    display: block;
+    margin: 0 auto;
+    padding: .7rem 2rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: .5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+
+  .start-btn:hover, .reset-btn:hover { background: #2563eb; }
+
+  .reset-btn { margin-top: 2rem; }
+
+  .start-btn:disabled {
+    background: var(--text-light);
+    cursor: not-allowed;
+  }
+
+  #student-label {
+    text-align: center;
+    font-size: .9rem;
+    color: var(--text-light);
+    margin-bottom: .5rem;
+    font-weight: 600;
+  }
+
+  .hidden { display: none; }
+
+  code {
+    background: #f1f5f9;
+    padding: .15rem .35rem;
+    border-radius: .25rem;
+    font-family: "Fira Code", "Consolas", monospace;
+    font-size: .88em;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Тест: multiprocessing и asyncio</h1>
+  <p>Лабораторная работа 14 (часть 2) — 20 вопросов</p>
+</header>
+
+<div id="student-form" class="student-form hidden">
+  <div class="fields">
+    <div>
+      <label for="sname">Имя / Name</label>
+      <input type="text" id="sname" maxlength="60" autocomplete="off" placeholder="Иванов Иван">
+    </div>
+    <div>
+      <label for="sgroup">Группа / Group</label>
+      <input type="text" id="sgroup" maxlength="30" autocomplete="off" placeholder="ИС-21">
+    </div>
+    <div>
+      <label for="snum">№ п/п / Seq #</label>
+      <input type="text" id="snum" maxlength="10" autocomplete="off" placeholder="7">
+    </div>
+  </div>
+  <button class="start-btn" id="start-btn" onclick="startQuiz()">Начать тест</button>
+</div>
+
+<div id="quiz-area" class="">
+  <div id="student-label">Горбачев Андрей (ИД24 - 2, № 4) — результат: 20 из 20</div>
+  <div class="score-bar">
+    <span id="score-correct">Верно: 20</span>
+    <span id="score-wrong">Ошибки: 0</span>
+    <span id="score-total">Осталось: 0</span>
+  </div>
+
+  <div id="quiz"><div class="question-card" id="q0"><div class="q-header"><span class="q-number">Вопрос 1</span></div><p class="q-text">Для какого типа задач лучше всего подходит модуль <code>multiprocessing</code>?</p><div class="options"><div class="option disabled" data-q="0" data-o="0" onclick="choose(0, 0)">
+        <span class="letter">A</span>
+        <span>IO-bound (сетевые запросы, файлы)</span>
+      </div><div class="option disabled correct" data-q="0" data-o="1" onclick="choose(0, 1)">
+        <span class="letter">B</span>
+        <span>CPU-bound (вычисления, математика)</span>
+      </div><div class="option disabled" data-q="0" data-o="2" onclick="choose(0, 2)">
+        <span class="letter">C</span>
+        <span>Оба типа одинаково</span>
+      </div><div class="option disabled" data-q="0" data-o="3" onclick="choose(0, 3)">
+        <span class="letter">D</span>
+        <span>Только для работы с базами данных</span>
+      </div></div><div class="explanation visible" id="expl-0">multiprocessing создаёт отдельные процессы ОС, что позволяет задействовать несколько ядер CPU. Это даёт ускорение именно для CPU-bound задач.</div></div><div class="question-card" id="q1"><div class="q-header"><span class="q-number">Вопрос 2</span></div><p class="q-text">Что такое GIL и как <code>multiprocessing</code> решает связанную с ним проблему?</p><div class="options"><div class="option disabled" data-q="1" data-o="0" onclick="choose(1, 0)">
+        <span class="letter">A</span>
+        <span>GIL — это сетевой протокол; multiprocessing его не использует</span>
+      </div><div class="option disabled correct" data-q="1" data-o="1" onclick="choose(1, 1)">
+        <span class="letter">B</span>
+        <span>GIL — Global Interpreter Lock; multiprocessing обходит его, создавая отдельные процессы с собственным интерпретатором</span>
+      </div><div class="option disabled" data-q="1" data-o="2" onclick="choose(1, 2)">
+        <span class="letter">C</span>
+        <span>GIL — глобальная блокировка памяти; multiprocessing её отключает</span>
+      </div><div class="option disabled" data-q="1" data-o="3" onclick="choose(1, 3)">
+        <span class="letter">D</span>
+        <span>GIL не существует в Python 3</span>
+      </div></div><div class="explanation visible" id="expl-1">GIL (Global Interpreter Lock) не позволяет нескольким потокам одновременно выполнять байт-код Python. Каждый процесс в multiprocessing имеет собственный интерпретатор и свой GIL, поэтому они выполняются параллельно.</div></div><div class="question-card" id="q2"><div class="q-header"><span class="q-number">Вопрос 3</span></div><p class="q-text">Зачем используется <code>multiprocessing.Queue</code>?</p><div class="options"><div class="option disabled" data-q="2" data-o="0" onclick="choose(2, 0)">
+        <span class="letter">A</span>
+        <span>Для сортировки процессов по приоритету</span>
+      </div><div class="option disabled" data-q="2" data-o="1" onclick="choose(2, 1)">
+        <span class="letter">B</span>
+        <span>Для ограничения числа запущенных процессов</span>
+      </div><div class="option disabled correct" data-q="2" data-o="2" onclick="choose(2, 2)">
+        <span class="letter">C</span>
+        <span>Для передачи данных между процессами</span>
+      </div><div class="option disabled" data-q="2" data-o="3" onclick="choose(2, 3)">
+        <span class="letter">D</span>
+        <span>Для синхронного запуска процессов</span>
+      </div></div><div class="explanation visible" id="expl-2">Каждый процесс имеет собственную копию памяти. Queue — безопасный механизм межпроцессного обмена данными (IPC), позволяющий передавать результаты из дочернего процесса в родительский.</div></div><div class="question-card" id="q3"><div class="q-header"><span class="q-number">Вопрос 4</span></div><p class="q-text">Почему нельзя использовать обычные глобальные переменные для обмена данными между процессами?</p><div class="options"><div class="option disabled" data-q="3" data-o="0" onclick="choose(3, 0)">
+        <span class="letter">A</span>
+        <span>Python запрещает глобальные переменные</span>
+      </div><div class="option disabled" data-q="3" data-o="1" onclick="choose(3, 1)">
+        <span class="letter">B</span>
+        <span>Глобальные переменные слишком медленные</span>
+      </div><div class="option disabled correct" data-q="3" data-o="2" onclick="choose(3, 2)">
+        <span class="letter">C</span>
+        <span>Каждый процесс работает с собственной копией памяти</span>
+      </div><div class="option disabled" data-q="3" data-o="3" onclick="choose(3, 3)">
+        <span class="letter">D</span>
+        <span>Глобальные переменные доступны только для чтения</span>
+      </div></div><div class="explanation visible" id="expl-3">При создании нового процесса ОС копирует всю память родительского процесса. Изменения переменных в дочернем процессе не видны в родительском — это разные адресные пространства.</div></div><div class="question-card" id="q4"><div class="q-header"><span class="q-number">Вопрос 5</span></div><p class="q-text">Что делает метод <code>Process.join()</code>?</p><div class="options"><div class="option disabled" data-q="4" data-o="0" onclick="choose(4, 0)">
+        <span class="letter">A</span>
+        <span>Объединяет два процесса в один</span>
+      </div><div class="option disabled" data-q="4" data-o="1" onclick="choose(4, 1)">
+        <span class="letter">B</span>
+        <span>Запускает процесс</span>
+      </div><div class="option disabled correct" data-q="4" data-o="2" onclick="choose(4, 2)">
+        <span class="letter">C</span>
+        <span>Блокирует вызывающий процесс до завершения дочернего</span>
+      </div><div class="option disabled" data-q="4" data-o="3" onclick="choose(4, 3)">
+        <span class="letter">D</span>
+        <span>Принудительно завершает процесс</span>
+      </div></div><div class="explanation visible" id="expl-4">join() заставляет родительский процесс ожидать завершения дочернего. Без join() главный процесс может завершиться раньше, чем дочерние.</div></div><div class="question-card" id="q5"><div class="q-header"><span class="q-number">Вопрос 6</span></div><p class="q-text">В чём преимущество <code>Pool</code> перед созданием отдельных <code>Process</code> на каждую задачу?</p><div class="options"><div class="option disabled" data-q="5" data-o="0" onclick="choose(5, 0)">
+        <span class="letter">A</span>
+        <span>Pool всегда быстрее</span>
+      </div><div class="option disabled" data-q="5" data-o="1" onclick="choose(5, 1)">
+        <span class="letter">B</span>
+        <span>Pool не требует if __name__ == '__main__'</span>
+      </div><div class="option disabled correct" data-q="5" data-o="2" onclick="choose(5, 2)">
+        <span class="letter">C</span>
+        <span>Pool создаёт фиксированное число процессов и распределяет задачи между ними</span>
+      </div><div class="option disabled" data-q="5" data-o="3" onclick="choose(5, 3)">
+        <span class="letter">D</span>
+        <span>Pool использует потоки вместо процессов</span>
+      </div></div><div class="explanation visible" id="expl-5">Создание процесса — дорогая операция. Для матрицы 50×50 это 2500 процессов. Pool создаёт, например, 4 процесса и распределяет все 2500 задач между ними, что значительно эффективнее.</div></div><div class="question-card" id="q6"><div class="q-header"><span class="q-number">Вопрос 7</span></div><p class="q-text">Что определяет конструкция <code>async def</code> в Python?</p><div class="options"><div class="option disabled" data-q="6" data-o="0" onclick="choose(6, 0)">
+        <span class="letter">A</span>
+        <span>Отдельный поток</span>
+      </div><div class="option disabled" data-q="6" data-o="1" onclick="choose(6, 1)">
+        <span class="letter">B</span>
+        <span>Новый процесс ОС</span>
+      </div><div class="option disabled correct" data-q="6" data-o="2" onclick="choose(6, 2)">
+        <span class="letter">C</span>
+        <span>Корутину (асинхронную функцию)</span>
+      </div><div class="option disabled" data-q="6" data-o="3" onclick="choose(6, 3)">
+        <span class="letter">D</span>
+        <span>Генератор</span>
+      </div></div><div class="explanation visible" id="expl-6">async def определяет корутину — специальную функцию, которая может приостанавливать своё выполнение в точках await и возобновляться позже.</div></div><div class="question-card" id="q7"><div class="q-header"><span class="q-number">Вопрос 8</span></div><p class="q-text">Что происходит при выполнении <code>await</code> внутри корутины?</p><div class="options"><div class="option disabled" data-q="7" data-o="0" onclick="choose(7, 0)">
+        <span class="letter">A</span>
+        <span>Программа завершается</span>
+      </div><div class="option disabled" data-q="7" data-o="1" onclick="choose(7, 1)">
+        <span class="letter">B</span>
+        <span>Создаётся новый поток для выполнения операции</span>
+      </div><div class="option disabled correct" data-q="7" data-o="2" onclick="choose(7, 2)">
+        <span class="letter">C</span>
+        <span>Текущая корутина приостанавливается, управление передаётся event loop</span>
+      </div><div class="option disabled" data-q="7" data-o="3" onclick="choose(7, 3)">
+        <span class="letter">D</span>
+        <span>Запускается новый процесс</span>
+      </div></div><div class="explanation visible" id="expl-7">await приостанавливает текущую корутину и передаёт управление event loop. Пока корутина ожидает (например, сетевого ответа), event loop может выполнять другие корутины.</div></div><div class="question-card" id="q8"><div class="q-header"><span class="q-number">Вопрос 9</span></div><p class="q-text">Что произойдёт, если в асинхронной функции использовать <code>time.sleep(5)</code> вместо <code>await asyncio.sleep(5)</code>?</p><div class="options"><div class="option disabled" data-q="8" data-o="0" onclick="choose(8, 0)">
+        <span class="letter">A</span>
+        <span>Ничего — результат одинаковый</span>
+      </div><div class="option disabled" data-q="8" data-o="1" onclick="choose(8, 1)">
+        <span class="letter">B</span>
+        <span>Программа аварийно завершится с ошибкой</span>
+      </div><div class="option disabled correct" data-q="8" data-o="2" onclick="choose(8, 2)">
+        <span class="letter">C</span>
+        <span>Event loop заблокируется на 5 секунд, все остальные корутины встанут</span>
+      </div><div class="option disabled" data-q="8" data-o="3" onclick="choose(8, 3)">
+        <span class="letter">D</span>
+        <span>Будет создан отдельный поток для ожидания</span>
+      </div></div><div class="explanation visible" id="expl-8">time.sleep() — блокирующая операция. Она останавливает весь поток, включая event loop. Все остальные корутины не смогут выполняться эти 5 секунд. asyncio.sleep() отпускает управление event loop.</div></div><div class="question-card" id="q9"><div class="q-header"><span class="q-number">Вопрос 10</span></div><p class="q-text">Что делает <code>asyncio.gather()</code>?</p><div class="options"><div class="option disabled" data-q="9" data-o="0" onclick="choose(9, 0)">
+        <span class="letter">A</span>
+        <span>Запускает корутины последовательно</span>
+      </div><div class="option disabled correct" data-q="9" data-o="1" onclick="choose(9, 1)">
+        <span class="letter">B</span>
+        <span>Запускает несколько корутин конкурентно и ожидает завершения всех</span>
+      </div><div class="option disabled" data-q="9" data-o="2" onclick="choose(9, 2)">
+        <span class="letter">C</span>
+        <span>Собирает результаты из нескольких потоков</span>
+      </div><div class="option disabled" data-q="9" data-o="3" onclick="choose(9, 3)">
+        <span class="letter">D</span>
+        <span>Создаёт новый event loop для каждой корутины</span>
+      </div></div><div class="explanation visible" id="expl-9">asyncio.gather() принимает несколько корутин и запускает их конкурентно в одном event loop. Возвращает список результатов, когда все корутины завершены.</div></div><div class="question-card" id="q10"><div class="q-header"><span class="q-number">Вопрос 11</span></div><p class="q-text">Сколько потоков использует <code>asyncio</code> по умолчанию?</p><div class="options"><div class="option disabled" data-q="10" data-o="0" onclick="choose(10, 0)">
+        <span class="letter">A</span>
+        <span>Столько, сколько ядер CPU</span>
+      </div><div class="option disabled" data-q="10" data-o="1" onclick="choose(10, 1)">
+        <span class="letter">B</span>
+        <span>Два (основной + event loop)</span>
+      </div><div class="option disabled correct" data-q="10" data-o="2" onclick="choose(10, 2)">
+        <span class="letter">C</span>
+        <span>Один</span>
+      </div><div class="option disabled" data-q="10" data-o="3" onclick="choose(10, 3)">
+        <span class="letter">D</span>
+        <span>asyncio использует процессы, а не потоки</span>
+      </div></div><div class="explanation visible" id="expl-10">asyncio работает в одном потоке. Конкурентность достигается за счёт кооперативного переключения между корутинами в точках await, а не за счёт параллельного выполнения.</div></div><div class="question-card" id="q11"><div class="q-header"><span class="q-number">Вопрос 12</span></div><p class="q-text">Какой тип многозадачности реализует <code>asyncio</code>?</p><div class="options"><div class="option disabled" data-q="11" data-o="0" onclick="choose(11, 0)">
+        <span class="letter">A</span>
+        <span>Вытесняющая (preemptive)</span>
+      </div><div class="option disabled" data-q="11" data-o="1" onclick="choose(11, 1)">
+        <span class="letter">B</span>
+        <span>Параллельная (parallel)</span>
+      </div><div class="option disabled correct" data-q="11" data-o="2" onclick="choose(11, 2)">
+        <span class="letter">C</span>
+        <span>Кооперативная (cooperative)</span>
+      </div><div class="option disabled" data-q="11" data-o="3" onclick="choose(11, 3)">
+        <span class="letter">D</span>
+        <span>Конкурентно-параллельная</span>
+      </div></div><div class="explanation visible" id="expl-11">В asyncio переключение между задачами происходит только в точках await — программист сам определяет, где корутина может быть приостановлена. Это кооперативная многозадачность.</div></div><div class="question-card" id="q12"><div class="q-header"><span class="q-number">Вопрос 13</span></div><p class="q-text">Что вернёт <code>os.getpid()</code> в дочерних процессах <code>multiprocessing</code>?</p><div class="options"><div class="option disabled" data-q="12" data-o="0" onclick="choose(12, 0)">
+        <span class="letter">A</span>
+        <span>Тот же PID, что и у родителя</span>
+      </div><div class="option disabled" data-q="12" data-o="1" onclick="choose(12, 1)">
+        <span class="letter">B</span>
+        <span>Всегда 0</span>
+      </div><div class="option disabled correct" data-q="12" data-o="2" onclick="choose(12, 2)">
+        <span class="letter">C</span>
+        <span>Уникальный PID для каждого дочернего процесса</span>
+      </div><div class="option disabled" data-q="12" data-o="3" onclick="choose(12, 3)">
+        <span class="letter">D</span>
+        <span>PID родительского процесса</span>
+      </div></div><div class="explanation visible" id="expl-12">Каждый процесс ОС получает уникальный PID. В multiprocessing дочерние процессы — это настоящие процессы ОС с собственными PID, в отличие от потоков, которые разделяют PID своего процесса.</div></div><div class="question-card" id="q13"><div class="q-header"><span class="q-number">Вопрос 14</span></div><p class="q-text">Зачем в скриптах с <code>multiprocessing</code> нужна конструкция <code>if __name__ == '__main__'</code>?</p><div class="options"><div class="option disabled" data-q="13" data-o="0" onclick="choose(13, 0)">
+        <span class="letter">A</span>
+        <span>Это просто стилистическое соглашение PEP 8</span>
+      </div><div class="option disabled" data-q="13" data-o="1" onclick="choose(13, 1)">
+        <span class="letter">B</span>
+        <span>Она ускоряет выполнение</span>
+      </div><div class="option disabled correct" data-q="13" data-o="2" onclick="choose(13, 2)">
+        <span class="letter">C</span>
+        <span>Она предотвращает повторное выполнение кода верхнего уровня в дочерних процессах</span>
+      </div><div class="option disabled" data-q="13" data-o="3" onclick="choose(13, 3)">
+        <span class="letter">D</span>
+        <span>Её требует операционная система</span>
+      </div></div><div class="explanation visible" id="expl-13">При создании дочернего процесса Python импортирует модуль заново. Без этой проверки код создания процессов выполнится и в дочернем процессе, вызвав бесконечную рекурсию.</div></div><div class="question-card" id="q14"><div class="q-header"><span class="q-number">Вопрос 15</span></div><p class="q-text">Три IO-операции занимают 2, 3 и 1 секунду. Сколько времени займёт их выполнение через <code>asyncio.gather()</code>?</p><div class="options"><div class="option disabled" data-q="14" data-o="0" onclick="choose(14, 0)">
+        <span class="letter">A</span>
+        <span>6 секунд (2 + 3 + 1)</span>
+      </div><div class="option disabled" data-q="14" data-o="1" onclick="choose(14, 1)">
+        <span class="letter">B</span>
+        <span>2 секунды (время самой быстрой)</span>
+      </div><div class="option disabled correct" data-q="14" data-o="2" onclick="choose(14, 2)">
+        <span class="letter">C</span>
+        <span>≈3 секунды (время самой долгой)</span>
+      </div><div class="option disabled" data-q="14" data-o="3" onclick="choose(14, 3)">
+        <span class="letter">D</span>
+        <span>Зависит от количества ядер CPU</span>
+      </div></div><div class="explanation visible" id="expl-14">asyncio.gather() запускает все корутины конкурентно. Пока одна ожидает IO, другие выполняются. Общее время определяется самой долгой операцией — max(2, 3, 1) = 3 секунды.</div></div><div class="question-card" id="q15"><div class="q-header"><span class="q-number">Вопрос 16</span></div><p class="q-text">Что делает <code>await writer.drain()</code> в asyncio?</p><div class="options"><div class="option disabled" data-q="15" data-o="0" onclick="choose(15, 0)">
+        <span class="letter">A</span>
+        <span>Удаляет объект writer</span>
+      </div><div class="option disabled" data-q="15" data-o="1" onclick="choose(15, 1)">
+        <span class="letter">B</span>
+        <span>Читает данные от клиента</span>
+      </div><div class="option disabled correct" data-q="15" data-o="2" onclick="choose(15, 2)">
+        <span class="letter">C</span>
+        <span>Ожидает, пока буфер записи будет отправлен по сети</span>
+      </div><div class="option disabled" data-q="15" data-o="3" onclick="choose(15, 3)">
+        <span class="letter">D</span>
+        <span>Закрывает сетевое соединение</span>
+      </div></div><div class="explanation visible" id="expl-15">writer.write() помещает данные в буфер, но не гарантирует немедленную отправку. drain() — это корутина, которая ожидает, пока данные из буфера действительно уйдут в сеть.</div></div><div class="question-card" id="q16"><div class="q-header"><span class="q-number">Вопрос 17</span></div><p class="q-text">Чем отличается вывод PID в многопроцессном сервере от многопоточного?</p><div class="options"><div class="option disabled" data-q="16" data-o="0" onclick="choose(16, 0)">
+        <span class="letter">A</span>
+        <span>Разницы нет</span>
+      </div><div class="option disabled" data-q="16" data-o="1" onclick="choose(16, 1)">
+        <span class="letter">B</span>
+        <span>В threading у каждого обработчика свой PID</span>
+      </div><div class="option disabled correct" data-q="16" data-o="2" onclick="choose(16, 2)">
+        <span class="letter">C</span>
+        <span>В multiprocessing каждый обработчик имеет уникальный PID, а в threading — все имеют одинаковый PID</span>
+      </div><div class="option disabled" data-q="16" data-o="3" onclick="choose(16, 3)">
+        <span class="letter">D</span>
+        <span>В multiprocessing PID не отображается</span>
+      </div></div><div class="explanation visible" id="expl-16">Потоки (threading) выполняются внутри одного процесса ОС, поэтому os.getpid() возвращает один и тот же PID. Процессы (multiprocessing) — это отдельные процессы ОС, каждый с уникальным PID.</div></div><div class="question-card" id="q17"><div class="q-header"><span class="q-number">Вопрос 18</span></div><p class="q-text">Что делает <code>Pool.starmap(func, iterable)</code>?</p><div class="options"><div class="option disabled" data-q="17" data-o="0" onclick="choose(17, 0)">
+        <span class="letter">A</span>
+        <span>Вызывает func один раз с одним аргументом</span>
+      </div><div class="option disabled" data-q="17" data-o="1" onclick="choose(17, 1)">
+        <span class="letter">B</span>
+        <span>Создаёт новый процесс для каждого вызова</span>
+      </div><div class="option disabled correct" data-q="17" data-o="2" onclick="choose(17, 2)">
+        <span class="letter">C</span>
+        <span>Распределяет вызовы func с несколькими аргументами по процессам пула</span>
+      </div><div class="option disabled" data-q="17" data-o="3" onclick="choose(17, 3)">
+        <span class="letter">D</span>
+        <span>Останавливает все процессы пула</span>
+      </div></div><div class="explanation visible" id="expl-17">starmap() — аналог map(), но позволяет передавать несколько аргументов каждому вызову. Он распределяет задачи между существующими процессами пула, не создавая новых.</div></div><div class="question-card" id="q18"><div class="q-header"><span class="q-number">Вопрос 19</span></div><p class="q-text">Для веб-сервера, обслуживающего тысячи одновременных подключений, какой подход наиболее эффективен?</p><div class="options"><div class="option disabled" data-q="18" data-o="0" onclick="choose(18, 0)">
+        <span class="letter">A</span>
+        <span>multiprocessing — по процессу на клиента</span>
+      </div><div class="option disabled" data-q="18" data-o="1" onclick="choose(18, 1)">
+        <span class="letter">B</span>
+        <span>threading — по потоку на клиента</span>
+      </div><div class="option disabled correct" data-q="18" data-o="2" onclick="choose(18, 2)">
+        <span class="letter">C</span>
+        <span>asyncio — конкурентная обработка в одном потоке</span>
+      </div><div class="option disabled" data-q="18" data-o="3" onclick="choose(18, 3)">
+        <span class="letter">D</span>
+        <span>Последовательная обработка</span>
+      </div></div><div class="explanation visible" id="expl-18">Обработка сетевых подключений — IO-bound задача. asyncio-корутины легковесны (можно создать тысячи), не требуют переключения контекста ОС и минимально потребляют ресурсы.</div></div><div class="question-card" id="q19"><div class="q-header"><span class="q-number">Вопрос 20</span></div><p class="q-text">Какой вызов корректно создаёт и запускает TCP-сервер в asyncio (Python 3.8+)?</p><div class="q-code"># Вариант A:
+loop = asyncio.get_event_loop()
+loop.run_until_complete(asyncio.start_server(handler, host, port, loop=loop))
+
+# Вариант B:
+server = await asyncio.start_server(handler, host, port)
+async with server:
+    await server.serve_forever()</div><div class="options"><div class="option disabled" data-q="19" data-o="0" onclick="choose(19, 0)">
+        <span class="letter">A</span>
+        <span>Вариант A — он более явный и надёжный</span>
+      </div><div class="option disabled" data-q="19" data-o="1" onclick="choose(19, 1)">
+        <span class="letter">B</span>
+        <span>Оба варианта равнозначны</span>
+      </div><div class="option disabled correct" data-q="19" data-o="2" onclick="choose(19, 2)">
+        <span class="letter">C</span>
+        <span>Вариант B — это современный стиль Python 3.8+; параметр loop= удалён в Python 3.10</span>
+      </div><div class="option disabled" data-q="19" data-o="3" onclick="choose(19, 3)">
+        <span class="letter">D</span>
+        <span>Ни один — нужно использовать socket.socket()</span>
+      </div></div><div class="explanation visible" id="expl-19">Вариант A использует устаревший API (параметр loop= deprecated с Python 3.8 и удалён в 3.10). Вариант B использует asyncio.run() + async with — это современный, рекомендованный стиль.</div></div></div>
+
+  <button class="reset-btn" onclick="resetQuiz()">Начать заново</button>
+</div>
+
+</div>
+
+<script>
+const questions = [
+  {
+    q: "Для какого типа задач лучше всего подходит модуль <code>multiprocessing</code>?",
+    opts: [
+      "IO-bound (сетевые запросы, файлы)",
+      "CPU-bound (вычисления, математика)",
+      "Оба типа одинаково",
+      "Только для работы с базами данных"
+    ],
+    ans: 1,
+    expl: "multiprocessing создаёт отдельные процессы ОС, что позволяет задействовать несколько ядер CPU. Это даёт ускорение именно для CPU-bound задач."
+  },
+  {
+    q: "Что такое GIL и как <code>multiprocessing</code> решает связанную с ним проблему?",
+    opts: [
+      "GIL — это сетевой протокол; multiprocessing его не использует",
+      "GIL — Global Interpreter Lock; multiprocessing обходит его, создавая отдельные процессы с собственным интерпретатором",
+      "GIL — глобальная блокировка памяти; multiprocessing её отключает",
+      "GIL не существует в Python 3"
+    ],
+    ans: 1,
+    expl: "GIL (Global Interpreter Lock) не позволяет нескольким потокам одновременно выполнять байт-код Python. Каждый процесс в multiprocessing имеет собственный интерпретатор и свой GIL, поэтому они выполняются параллельно."
+  },
+  {
+    q: "Зачем используется <code>multiprocessing.Queue</code>?",
+    opts: [
+      "Для сортировки процессов по приоритету",
+      "Для ограничения числа запущенных процессов",
+      "Для передачи данных между процессами",
+      "Для синхронного запуска процессов"
+    ],
+    ans: 2,
+    expl: "Каждый процесс имеет собственную копию памяти. Queue — безопасный механизм межпроцессного обмена данными (IPC), позволяющий передавать результаты из дочернего процесса в родительский."
+  },
+  {
+    q: "Почему нельзя использовать обычные глобальные переменные для обмена данными между процессами?",
+    opts: [
+      "Python запрещает глобальные переменные",
+      "Глобальные переменные слишком медленные",
+      "Каждый процесс работает с собственной копией памяти",
+      "Глобальные переменные доступны только для чтения"
+    ],
+    ans: 2,
+    expl: "При создании нового процесса ОС копирует всю память родительского процесса. Изменения переменных в дочернем процессе не видны в родительском — это разные адресные пространства."
+  },
+  {
+    q: "Что делает метод <code>Process.join()</code>?",
+    opts: [
+      "Объединяет два процесса в один",
+      "Запускает процесс",
+      "Блокирует вызывающий процесс до завершения дочернего",
+      "Принудительно завершает процесс"
+    ],
+    ans: 2,
+    expl: "join() заставляет родительский процесс ожидать завершения дочернего. Без join() главный процесс может завершиться раньше, чем дочерние."
+  },
+  {
+    q: "В чём преимущество <code>Pool</code> перед созданием отдельных <code>Process</code> на каждую задачу?",
+    opts: [
+      "Pool всегда быстрее",
+      "Pool не требует if __name__ == '__main__'",
+      "Pool создаёт фиксированное число процессов и распределяет задачи между ними",
+      "Pool использует потоки вместо процессов"
+    ],
+    ans: 2,
+    expl: "Создание процесса — дорогая операция. Для матрицы 50×50 это 2500 процессов. Pool создаёт, например, 4 процесса и распределяет все 2500 задач между ними, что значительно эффективнее."
+  },
+  {
+    q: "Что определяет конструкция <code>async def</code> в Python?",
+    opts: [
+      "Отдельный поток",
+      "Новый процесс ОС",
+      "Корутину (асинхронную функцию)",
+      "Генератор"
+    ],
+    ans: 2,
+    expl: "async def определяет корутину — специальную функцию, которая может приостанавливать своё выполнение в точках await и возобновляться позже."
+  },
+  {
+    q: "Что происходит при выполнении <code>await</code> внутри корутины?",
+    opts: [
+      "Программа завершается",
+      "Создаётся новый поток для выполнения операции",
+      "Текущая корутина приостанавливается, управление передаётся event loop",
+      "Запускается новый процесс"
+    ],
+    ans: 2,
+    expl: "await приостанавливает текущую корутину и передаёт управление event loop. Пока корутина ожидает (например, сетевого ответа), event loop может выполнять другие корутины."
+  },
+  {
+    q: "Что произойдёт, если в асинхронной функции использовать <code>time.sleep(5)</code> вместо <code>await asyncio.sleep(5)</code>?",
+    opts: [
+      "Ничего — результат одинаковый",
+      "Программа аварийно завершится с ошибкой",
+      "Event loop заблокируется на 5 секунд, все остальные корутины встанут",
+      "Будет создан отдельный поток для ожидания"
+    ],
+    ans: 2,
+    expl: "time.sleep() — блокирующая операция. Она останавливает весь поток, включая event loop. Все остальные корутины не смогут выполняться эти 5 секунд. asyncio.sleep() отпускает управление event loop."
+  },
+  {
+    q: "Что делает <code>asyncio.gather()</code>?",
+    opts: [
+      "Запускает корутины последовательно",
+      "Запускает несколько корутин конкурентно и ожидает завершения всех",
+      "Собирает результаты из нескольких потоков",
+      "Создаёт новый event loop для каждой корутины"
+    ],
+    ans: 1,
+    expl: "asyncio.gather() принимает несколько корутин и запускает их конкурентно в одном event loop. Возвращает список результатов, когда все корутины завершены."
+  },
+  {
+    q: "Сколько потоков использует <code>asyncio</code> по умолчанию?",
+    opts: [
+      "Столько, сколько ядер CPU",
+      "Два (основной + event loop)",
+      "Один",
+      "asyncio использует процессы, а не потоки"
+    ],
+    ans: 2,
+    expl: "asyncio работает в одном потоке. Конкурентность достигается за счёт кооперативного переключения между корутинами в точках await, а не за счёт параллельного выполнения."
+  },
+  {
+    q: "Какой тип многозадачности реализует <code>asyncio</code>?",
+    opts: [
+      "Вытесняющая (preemptive)",
+      "Параллельная (parallel)",
+      "Кооперативная (cooperative)",
+      "Конкурентно-параллельная"
+    ],
+    ans: 2,
+    expl: "В asyncio переключение между задачами происходит только в точках await — программист сам определяет, где корутина может быть приостановлена. Это кооперативная многозадачность."
+  },
+  {
+    q: "Что вернёт <code>os.getpid()</code> в дочерних процессах <code>multiprocessing</code>?",
+    opts: [
+      "Тот же PID, что и у родителя",
+      "Всегда 0",
+      "Уникальный PID для каждого дочернего процесса",
+      "PID родительского процесса"
+    ],
+    ans: 2,
+    expl: "Каждый процесс ОС получает уникальный PID. В multiprocessing дочерние процессы — это настоящие процессы ОС с собственными PID, в отличие от потоков, которые разделяют PID своего процесса."
+  },
+  {
+    q: "Зачем в скриптах с <code>multiprocessing</code> нужна конструкция <code>if __name__ == '__main__'</code>?",
+    opts: [
+      "Это просто стилистическое соглашение PEP 8",
+      "Она ускоряет выполнение",
+      "Она предотвращает повторное выполнение кода верхнего уровня в дочерних процессах",
+      "Её требует операционная система"
+    ],
+    ans: 2,
+    expl: "При создании дочернего процесса Python импортирует модуль заново. Без этой проверки код создания процессов выполнится и в дочернем процессе, вызвав бесконечную рекурсию."
+  },
+  {
+    q: "Три IO-операции занимают 2, 3 и 1 секунду. Сколько времени займёт их выполнение через <code>asyncio.gather()</code>?",
+    opts: [
+      "6 секунд (2 + 3 + 1)",
+      "2 секунды (время самой быстрой)",
+      "≈3 секунды (время самой долгой)",
+      "Зависит от количества ядер CPU"
+    ],
+    ans: 2,
+    expl: "asyncio.gather() запускает все корутины конкурентно. Пока одна ожидает IO, другие выполняются. Общее время определяется самой долгой операцией — max(2, 3, 1) = 3 секунды."
+  },
+  {
+    q: "Что делает <code>await writer.drain()</code> в asyncio?",
+    opts: [
+      "Удаляет объект writer",
+      "Читает данные от клиента",
+      "Ожидает, пока буфер записи будет отправлен по сети",
+      "Закрывает сетевое соединение"
+    ],
+    ans: 2,
+    expl: "writer.write() помещает данные в буфер, но не гарантирует немедленную отправку. drain() — это корутина, которая ожидает, пока данные из буфера действительно уйдут в сеть."
+  },
+  {
+    q: "Чем отличается вывод PID в многопроцессном сервере от многопоточного?",
+    opts: [
+      "Разницы нет",
+      "В threading у каждого обработчика свой PID",
+      "В multiprocessing каждый обработчик имеет уникальный PID, а в threading — все имеют одинаковый PID",
+      "В multiprocessing PID не отображается"
+    ],
+    ans: 2,
+    expl: "Потоки (threading) выполняются внутри одного процесса ОС, поэтому os.getpid() возвращает один и тот же PID. Процессы (multiprocessing) — это отдельные процессы ОС, каждый с уникальным PID."
+  },
+  {
+    q: "Что делает <code>Pool.starmap(func, iterable)</code>?",
+    opts: [
+      "Вызывает func один раз с одним аргументом",
+      "Создаёт новый процесс для каждого вызова",
+      "Распределяет вызовы func с несколькими аргументами по процессам пула",
+      "Останавливает все процессы пула"
+    ],
+    ans: 2,
+    expl: "starmap() — аналог map(), но позволяет передавать несколько аргументов каждому вызову. Он распределяет задачи между существующими процессами пула, не создавая новых."
+  },
+  {
+    q: "Для веб-сервера, обслуживающего тысячи одновременных подключений, какой подход наиболее эффективен?",
+    opts: [
+      "multiprocessing — по процессу на клиента",
+      "threading — по потоку на клиента",
+      "asyncio — конкурентная обработка в одном потоке",
+      "Последовательная обработка"
+    ],
+    ans: 2,
+    expl: "Обработка сетевых подключений — IO-bound задача. asyncio-корутины легковесны (можно создать тысячи), не требуют переключения контекста ОС и минимально потребляют ресурсы."
+  },
+  {
+    q: "Какой вызов корректно создаёт и запускает TCP-сервер в asyncio (Python 3.8+)?",
+    code: "# Вариант A:\nloop = asyncio.get_event_loop()\nloop.run_until_complete(asyncio.start_server(handler, host, port, loop=loop))\n\n# Вариант B:\nserver = await asyncio.start_server(handler, host, port)\nasync with server:\n    await server.serve_forever()",
+    opts: [
+      "Вариант A — он более явный и надёжный",
+      "Оба варианта равнозначны",
+      "Вариант B — это современный стиль Python 3.8+; параметр loop= удалён в Python 3.10",
+      "Ни один — нужно использовать socket.socket()"
+    ],
+    ans: 2,
+    expl: "Вариант A использует устаревший API (параметр loop= deprecated с Python 3.8 и удалён в 3.10). Вариант B использует asyncio.run() + async with — это современный, рекомендованный стиль."
+  }
+];
+
+let correct = 0, wrong = 0, remaining = questions.length;
+let studentName = "", studentGroup = "", studentNum = "";
+
+function sanitize(str) {
+  const el = document.createElement("span");
+  el.textContent = str;
+  return el.textContent.trim();
+}
+
+function startQuiz() {
+  studentName  = sanitize(document.getElementById("sname").value);
+  studentGroup = sanitize(document.getElementById("sgroup").value);
+  studentNum   = sanitize(document.getElementById("snum").value);
+
+  if (!studentName || !studentGroup || !studentNum) {
+    alert("Заполните все поля / Fill in all fields");
+    return;
+  }
+
+  document.getElementById("student-form").classList.add("hidden");
+  document.getElementById("quiz-area").classList.remove("hidden");
+
+  const label = document.getElementById("student-label");
+  label.textContent = `${studentName} — группа ${studentGroup}, № ${studentNum}`;
+
+  render();
+}
+
+function render() {
+  const container = document.getElementById("quiz");
+  container.innerHTML = "";
+
+  questions.forEach((q, qi) => {
+    const card = document.createElement("div");
+    card.className = "question-card";
+    card.id = `q${qi}`;
+
+    let html = `<div class="q-header"><span class="q-number">Вопрос ${qi + 1}</span></div>`;
+    html += `<p class="q-text">${q.q}</p>`;
+
+    if (q.code) {
+      html += `<div class="q-code">${q.code}</div>`;
+    }
+
+    html += `<div class="options">`;
+    const letters = ["A", "B", "C", "D"];
+    q.opts.forEach((opt, oi) => {
+      html += `<div class="option" data-q="${qi}" data-o="${oi}" onclick="choose(${qi}, ${oi})">
+        <span class="letter">${letters[oi]}</span>
+        <span>${opt}</span>
+      </div>`;
+    });
+    html += `</div>`;
+    html += `<div class="explanation" id="expl-${qi}">${q.expl}</div>`;
+
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+}
+
+function choose(qi, oi) {
+  const card = document.getElementById(`q${qi}`);
+  const opts = card.querySelectorAll(".option");
+
+  if (opts[0].classList.contains("disabled")) return;
+
+  const isCorrect = oi === questions[qi].ans;
+
+  opts.forEach((o, idx) => {
+    o.classList.add("disabled");
+    if (idx === questions[qi].ans) o.classList.add("correct");
+    if (idx === oi && !isCorrect) o.classList.add("wrong");
+  });
+
+  if (isCorrect) correct++; else wrong++;
+  remaining--;
+
+  document.getElementById("expl-" + qi).classList.add("visible");
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById("score-correct").textContent = `Верно: ${correct}`;
+  document.getElementById("score-wrong").textContent = `Ошибки: ${wrong}`;
+  document.getElementById("score-total").textContent = `Осталось: ${remaining}`;
+
+  if (remaining === 0) {
+    const label = document.getElementById("student-label");
+    label.textContent = `${studentName} (${studentGroup}, № ${studentNum}) — результат: ${correct} из ${questions.length}`;
+  }
+}
+
+function resetQuiz() {
+  correct = 0;
+  wrong = 0;
+  remaining = questions.length;
+
+  document.getElementById("quiz-area").classList.add("hidden");
+  document.getElementById("student-form").classList.remove("hidden");
+  document.getElementById("quiz").innerHTML = "";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+</script>
+
+
+</body></html>
