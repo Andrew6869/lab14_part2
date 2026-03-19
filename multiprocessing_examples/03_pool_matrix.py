@@ -1,125 +1,96 @@
-"""
-Перемножение матриц с использованием Pool (пула процессов).
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-Pool автоматически распределяет задачи между фиксированным числом процессов.
-Это эффективнее, чем создавать отдельный процесс на каждый элемент.
+"""
+Перемножение матриц с использованием multiprocessing.Pool
+
+Основа — функция element() из репозитория:
+https://github.com/fa-python-network/3_Parallelism
 
 Задания:
   TODO 3 — использовать Pool.starmap() для параллельного вычисления
-  TODO 4 — сравнить время при разном числе процессов в пуле
+  TODO 4 — запустить с разным числом процессов (1, 2, 4) и сравнить время
 
 Запуск:
     python3 03_pool_matrix.py
-
-═══════════════════════════════════════════════════════════════════════
-СПРАВКА: Зачем нужен Pool (из репозитория 3_Parallelism)
-https://github.com/fa-python-network/3_Parallelism
-═══════════════════════════════════════════════════════════════════════
-
-В файле 02_matrix_multiply.py для каждого элемента матрицы создавался
-отдельный Process. При матрице 50x50 это 2500 процессов — крайне
-неэффективно, так как на создание каждого процесса тратится время.
-
-Pool решает эту проблему: создаётся фиксированное число процессов
-(обычно = количеству ядер CPU), и задачи распределяются между ними.
-
-Задание из репозитория:
-  «Используйте пул процессов, чтобы распределять вычисления между
-   определённым заранее количеством процессов, не зависящим от размеров
-   матрицы.»
-
-Именно это вы реализуете ниже с помощью Pool.starmap().
-═══════════════════════════════════════════════════════════════════════
 """
 
 import time
-import os
+import random
 from multiprocessing import Pool
 
+def init_matrix(rows, cols):
+    """Создаёт матрицу rows×cols со случайными значениями."""
+    return [[random.random() for _ in range(cols)] for _ in range(rows)]
 
 def element(i, j, A, B):
-    """Вычисляет элемент C[i][j] — скалярное произведение строки i матрицы A
-    и столбца j матрицы B."""
-    N = len(A[0])
-    res = 0
-    for k in range(N):
-        res += A[i][k] * B[k][j]
+    """
+    Вычисляет один элемент результирующей матрицы.
+    i, j — индексы элемента
+    A, B — исходные матрицы
+    """
+    N = len(A[0])  # количество столбцов A = количество строк B
+    res = sum(A[i][k] * B[k][j] for k in range(N))
     return (i, j, res)
 
+if __name__ == "__main__":
+    # Размеры матриц: A (M×N), B (N×K) → результат M×K
+    M, N, K = 100, 100, 100
 
-# ──────────────────────────────────────────────
-# Генерация матриц побольше для наглядности
-# ──────────────────────────────────────────────
-SIZE = 50
+    print(f"Инициализация матриц {M}x{N} и {N}x{K}...")
+    A = init_matrix(M, N)
+    B = init_matrix(N, K)
 
-matrix_a = [[(i + j) % 10 for j in range(SIZE)] for i in range(SIZE)]
-matrix_b = [[(i * j) % 10 for j in range(SIZE)] for i in range(SIZE)]
+    # ------------------------------------------------------------
+    # Последовательное вычисление (baseline)
+    # ------------------------------------------------------------
+    print("\n--- Последовательное вычисление ---")
+    start_seq = time.time()
 
+    C_seq = [[0] * K for _ in range(M)]
+    for i in range(M):
+        for j in range(K):
+            C_seq[i][j] = sum(A[i][k] * B[k][j] for k in range(N))
 
-def sequential_multiply(A, B):
-    """Последовательное перемножение."""
-    rows = len(A)
-    cols = len(B[0])
-    result = [[0] * cols for _ in range(rows)]
-    for i in range(rows):
-        for j in range(cols):
-            _, _, val = element(i, j, A, B)
-            result[i][j] = val
-    return result
+    seq_time = time.time() - start_seq
+    print(f"Время: {seq_time:.4f} сек")
 
-
-def pool_multiply(A, B, num_processes):
-    """Параллельное перемножение через Pool."""
-    rows = len(A)
-    cols = len(B[0])
-    result = [[0] * cols for _ in range(rows)]
-
-    # TODO 3: Создайте пул процессов и используйте pool.starmap() для
-    # параллельного вычисления всех элементов матрицы.
-    #
-    # Подсказка:
-    # 1. Подготовьте список аргументов — кортежей (i, j, A, B) для каждого элемента:
-    #      args = [(i, j, A, B) for i in range(rows) for j in range(cols)]
-    #
-    # 2. Создайте пул и вызовите starmap:
-    #      with Pool(processes=num_processes) as pool:
-    #          results_list = pool.starmap(element, args)
-    #
-    # 3. Заполните матрицу result из results_list:
-    #      for (i, j, val) in results_list:
-    #          result[i][j] = val
-
-    # --- Ваш код здесь ---
-
-    # --- Конец вашего кода ---
-
-    return result
-
-
-if __name__ == '__main__':
-    cpu_count = os.cpu_count()
-    print(f"Размер матриц: {SIZE}x{SIZE}")
-    print(f"Доступно ядер CPU: {cpu_count}\n")
-
-    # Последовательное вычисление
-    t = time.time()
-    seq_result = sequential_multiply(matrix_a, matrix_b)
-    time_seq = time.time() - t
-    print(f"Последовательно: {time_seq:.4f} сек")
-
-    # TODO 4: Запустите pool_multiply с разным числом процессов (1, 2, 4)
-    # и выведите время для каждого варианта. Сравните с последовательным.
-    #
-    # Подсказка:
-    #   for n in [1, 2, 4]:
-    #       t = time.time()
-    #       par_result = pool_multiply(matrix_a, matrix_b, n)
-    #       elapsed = time.time() - t
-    #       print(f"Pool ({n} процессов): {elapsed:.4f} сек")
-    #
-    # Проверьте, что результаты совпадают:
-    #   assert par_result == seq_result, "Результаты не совпадают!"
-
-    # --- Ваш код здесь ---
-
-    # --- Конец вашего кода ---
+    # ------------------------------------------------------------
+    # TODO 3: Параллельное вычисление с Pool.starmap()
+    # TODO 4: Запуск с разным количеством процессов в пуле (1, 2, 4)
+    # ------------------------------------------------------------
+    
+    # Подготавливаем аргументы для каждого элемента
+    args = [(i, j, A, B) for i in range(M) for j in range(K)]
+    
+    pool_sizes = [1, 2, 4]
+    
+    for pool_size in pool_sizes:
+        print(f"\n--- Параллельное вычисление (Pool, процессов={pool_size}) ---")
+        start_par = time.time()
+        
+        # Создаём пул процессов
+        with Pool(processes=pool_size) as pool:
+            # starmap распаковывает каждый кортеж из args в отдельные аргументы
+            results = pool.starmap(element, args)
+        
+        # Собираем результаты в матрицу
+        C_par = [[0] * K for _ in range(M)]
+        for i, j, value in results:
+            C_par[i][j] = value
+        
+        par_time = time.time() - start_par
+        
+        # Проверка корректности
+        correct = True
+        for i in range(M):
+            for j in range(K):
+                if abs(C_seq[i][j] - C_par[i][j]) > 1e-10:
+                    correct = False
+                    break
+            if not correct:
+                break
+        
+        print(f"Время: {par_time:.4f} сек")
+        print(f"Ускорение: {seq_time/par_time:.2f}x")
+        print(f"Результаты {'совпадают' if correct else 'НЕ совпадают'}")

@@ -16,7 +16,7 @@ https://github.com/fa-python-network/3_Parallelism
 ═══════════════════════════════════════════════════════════════════════
 
 В репозитории приведён следующий пример функции element и запуска процесса:
-
+nano multiprocessing_examples/02_matrix_multiply.py
     def element(index, A, B, res):
         i, j = index
         res = 0
@@ -49,7 +49,7 @@ def element(index, A, B):
 
     Args:
         index: кортеж (i, j) — позиция элемента в результирующей матрице
-        A: первая матрица (список списков)
+        A: первая матрица (список списков)nano multiprocessing_examples/02_matrix_multiply.py
         B: вторая матрица (список списков)
 
     Returns:
@@ -117,7 +117,23 @@ def parallel_multiply(A, B):
     #           p.start()
 
     # --- Ваш код здесь ---
-
+    processes = []
+    for i in range(M):
+        for j in range(K):
+            p = Process(target=element_task, args=((i, j), A, B, queue))
+            processes.append(p)
+            p.start()
+    
+    for p in processes:
+        p.join()
+    
+    # Собираем результаты
+    C_par = [[0]*K for _ in range(M)]
+    while not queue.empty():
+        (i, j), val = queue.get()
+        C_par[i][j] = val
+    
+    par_time = time.time() - start_par
     # --- Конец вашего кода ---
 
     for p in processes:
@@ -153,15 +169,5 @@ if __name__ == '__main__':
     # последовательному. Выведите результат и время. Сравните.
     #
     # Подсказка:
-    #   t2 = time.time()
-    #   result_par = parallel_multiply(matrix_a, matrix_b)
-    #   time_par = time.time() - t2
-    #   print("Результат (параллельно):")
-    #   for row in result_par:
-    #       print(f"  {row}")
-    #   print(f"Время: {time_par:.6f} сек\n")
-    #   print(f"Ускорение: {time_seq / time_par:.2f}x")
-
     # --- Ваш код здесь ---
-
     # --- Конец вашего кода ---
